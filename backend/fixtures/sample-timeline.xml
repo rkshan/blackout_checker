@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<timeline>
+  <clip start="0.000" end="12.500" src="opening.mov" />
+  <clip start="13.000" duration="24.000" src="interview.mov" />
+  <gap start="37.000" end="38.200" />
+  <clip start="38.200" end="60.000" src="closing.mov" />
+</timeline>

@@ -1,0 +1,26 @@
+{
+  "name": "video-qc-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A local-first video quality-control dashboard with a React/Vite/Tailwind frontend and a FastAPI backend. It analyzes decoded video frames using FFmpeg's `blackdetect` filter, reads video metadata with FFprobe, inspects supported XML segment timestamps, and exports normalized results to JSON or CSV.",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "vite.config.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.0",
+    "vite": "^6.0.5"
+  }
+}

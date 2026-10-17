@@ -1,0 +1,64 @@
+{
+  "video": {
+    "filename": "sample.mp4",
+    "duration": 60.0,
+    "width": 1920,
+    "height": 1080,
+    "frameRate": "25/1",
+    "videoCodec": "h264",
+    "audioCodecs": ["aac"],
+    "format": "mov,mp4,m4a,3gp,3g2,mj2",
+    "size": 10000000
+  },
+  "xml": {
+    "filename": "sample-timeline.xml",
+    "supported": true,
+    "elementNames": ["clip", "gap", "timeline"],
+    "segmentCount": 3,
+    "warning": null
+  },
+  "settings": {
+    "pixelThreshold": 0.1,
+    "minBlackoutDuration": 0.5,
+    "nearBlackEnabled": true
+  },
+  "analysisDate": "2026-01-01T12:00:00+00:00",
+  "summary": {
+    "totalVideoDuration": 60.0,
+    "totalIssues": 2,
+    "blackoutCount": 0,
+    "blackFrameCount": 0,
+    "timelineGapCount": 2,
+    "missingOrDiscontinuousCount": 1,
+    "confirmedBlackIntervalDuration": 0,
+    "identifiedTimelineGapDuration": 1.7
+  },
+  "issues": [
+    {
+      "id": "issue-0001",
+      "type": "TIMELINE_DISCONTINUITY",
+      "startTime": 12.5,
+      "endTime": 13.0,
+      "duration": 0.5,
+      "severity": "MEDIUM",
+      "source": ["XML"],
+      "description": "A gap between consecutive timestamped XML segments was inferred."
+    },
+    {
+      "id": "issue-0002",
+      "type": "EMPTY_TIMELINE_GAP",
+      "startTime": 37.0,
+      "endTime": 38.2,
+      "duration": 1.2,
+      "severity": "MEDIUM",
+      "source": ["XML"],
+      "description": "The XML explicitly represents an empty or gap segment."
+    }
+  ],
+  "warnings": [],
+  "limitations": [
+    "Black interval detection is pixel-based and may flag intentional dark scenes.",
+    "Frame boundary precision depends on source timestamps, frame rate, and decoder behavior.",
+    "XML analysis recognizes common timestamp and source fields; vendor-specific schemas may need field mapping."
+  ]
+}
