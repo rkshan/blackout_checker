@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertCircle, ArrowDownToLine, Check, ChevronDown, Clapperboard, Clock3,
+  AlertCircle, ArrowDownToLine, Check, Clapperboard, Clock3,
   FileCode2, FileVideo2, FolderOpen, LoaderCircle, Play, RotateCcw,
   ScanLine, Search, ShieldCheck, SlidersHorizontal, UploadCloud, X,
 } from "lucide-react";
@@ -21,10 +21,6 @@ function formatSize(size = 0) {
   const units = ["B", "KB", "MB", "GB"];
   const power = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
   return `${(size / 1024 ** power).toFixed(power ? 1 : 0)} ${units[power]}`;
-}
-
-function IconButton({ children, className = "", ...props }) {
-  return <button className={`button ${className}`} {...props}>{children}</button>;
 }
 
 function FileCard({ label, file, accept, onChange, onRemove, icon: Icon, hint, required = false }) {
@@ -60,10 +56,6 @@ function FileCard({ label, file, accept, onChange, onRemove, icon: Icon, hint, r
       )}
     </div>
   );
-}
-
-function StatCard({ title, value, caption, icon: Icon, tone = "" }) {
-  return <article className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={17} /></div><div className="stat-copy"><span>{title}</span><strong>{value}</strong><small>{caption}</small></div></article>;
 }
 
 function App() {
@@ -233,12 +225,12 @@ function App() {
   return (
     <main className="app-shell min-h-screen">
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Video QC Analyzer home"><span className="brand-mark"><ScanLine size={21} /></span><span>FRAME<span className="brand-light">CHECK</span><small>MEDIA QUALITY CONTROL</small></span></a>
-        <div className="topbar-right"><span className="topbar-tag"><ShieldCheck size={14} /> LOCAL ANALYSIS</span><div className="profile"><div className="profile-avatar">QC</div><span>Operator</span><ChevronDown size={14} /></div></div>
+        <a className="brand" href="#" aria-label="Framecheck home"><span className="brand-mark"><ScanLine size={18} /></span><span>framecheck</span></a>
+        <div className="topbar-right"><ShieldCheck size={14} /><span>Private media analysis</span></div>
       </header>
 
       <section className="page-heading">
-        <div><div className="eyebrow">MEDIA OPERATIONS <span>/</span> QUALITY CONTROL</div><h1>Video QC Analyzer</h1><p>Inspect your media for blackouts, frame-level anomalies, and timeline continuity issues.</p></div>
+        <div><h1>Video quality check</h1><p>Check a video and timeline for blackouts and continuity issues.</p></div>
         <div className={`status-pill status-${status}`}><span className="status-dot" />{status === "idle" ? "Ready to analyze" : status === "processing" || status === "queued" ? "Analysis in progress" : status === "completed" ? "Analysis complete" : status === "failed" ? "Analysis failed" : "Analysis cancelled"}</div>
       </section>
 
@@ -247,7 +239,7 @@ function App() {
       <div className="workspace-grid">
         <div className="main-column">
           <section className="panel">
-            <div className="section-title"><div><span className="section-index">01</span><div><h2>Source files</h2><p>Upload an XML timeline to analyze; add a video for frame-level checks.</p></div></div><span className="subtle-label">VIDEO · MP4, MOV, MXF, MKV</span></div>
+            <div className="section-title"><div><div><h2>Files</h2><p>Choose a timeline. Add a video for frame-level checks.</p></div></div></div>
             <div className="upload-grid">
               <FileCard label="Video file" file={video} accept="video/*,.mxf" icon={FileVideo2} hint="Optional · Adds black-frame detection" onChange={setVideo} onRemove={() => setVideo(null)} />
               <FileCard label="XML timeline" file={xml} accept=".xml,text/xml,application/xml" icon={FileCode2} hint="Required · Segment and edit metadata" required onChange={setXml} onRemove={() => setXml(null)} />
@@ -255,7 +247,7 @@ function App() {
           </section>
 
           {(video || result) && <section className="panel preview-panel">
-            <div className="section-title"><div><span className="section-index">02</span><div><h2>Video preview</h2><p>Review detected moments in context.</p></div></div>{result?.video && <span className="subtle-label">{result.video.width} × {result.video.height} · {result.video.videoCodec?.toUpperCase()}</span>}</div>
+            <div className="section-title"><div><div><h2>Preview</h2><p>Review detected moments in context.</p></div></div>{result?.video && <span className="subtle-label">{result.video.width} × {result.video.height} · {result.video.videoCodec?.toUpperCase()}</span>}</div>
             {videoUrl ? <div className="video-wrap"><video ref={videoRef} src={videoUrl} controls preload="metadata" /></div> : <div className="video-placeholder"><Clapperboard size={25} /><span>{video ? "Video preview is available for this browser session." : "No video uploaded · showing XML timeline findings."}</span></div>}
             {result && <div className="timeline">
               <div className="timeline-heading"><span>DETECTION TIMELINE</span><span>{formatTime(duration)}</span></div>
@@ -272,7 +264,7 @@ function App() {
           </section>}
 
           <section className="panel results-panel">
-            <div className="section-title"><div><span className="section-index">03</span><div><h2>Analysis results</h2><p>{result ? `${issues.length} findings from this analysis` : "Run an analysis to populate the report."}</p></div></div>{result && <div className="export-group"><button className="outline-button" onClick={() => exportFile("csv")}><ArrowDownToLine size={15} /> CSV</button><button className="outline-button" onClick={() => exportFile("json")}><ArrowDownToLine size={15} /> JSON</button></div>}</div>
+            <div className="section-title"><div><div><h2>Findings</h2><p>{result ? `${issues.length} findings` : "Run an analysis to see the report."}</p></div></div>{result && <div className="export-group"><button className="outline-button" onClick={() => exportFile("csv")}><ArrowDownToLine size={15} /> CSV</button><button className="outline-button" onClick={() => exportFile("json")}><ArrowDownToLine size={15} /> JSON</button></div>}</div>
             {result?.warnings?.map((warning) => <div className="alert warning-alert" key={warning}><AlertCircle size={16} />{warning}</div>)}
             {result ? <>
               <div className="table-toolbar"><div className="search-box"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search findings..." /></div><label className="filter-select"><SlidersHorizontal size={14} /><select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="ALL">All issue types</option>{[...new Set(issues.map((item) => item.type))].map((type) => <option key={type}>{type}</option>)}</select></label><label className="filter-select"><select aria-label="Filter by severity" value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)}><option value="ALL">All severity</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label><label className="filter-select"><span>Sort</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="startTime">Start time</option><option value="duration">Duration</option><option value="severity">Severity</option></select></label><label className="time-filter"><span>From s</span><input type="number" min="0" value={timeStart} onChange={(event) => setTimeStart(event.target.value)} aria-label="Filter from start time in seconds" /></label><label className="time-filter"><span>To s</span><input type="number" min="0" value={timeEnd} onChange={(event) => setTimeEnd(event.target.value)} aria-label="Filter to start time in seconds" /></label></div>
@@ -287,7 +279,7 @@ function App() {
 
         <aside className="side-column">
           <section className="panel settings-panel">
-            <div className="section-title compact"><div><span className="section-index">SETUP</span><div><h2>Detection settings</h2><p>Adjust black frame sensitivity.</p></div></div></div>
+            <div className="section-title compact"><div><div><h2>Detection settings</h2><p>Adjust black frame sensitivity.</p></div></div></div>
             <div className="setting-row"><div className="setting-heading"><label htmlFor="threshold">Black pixel threshold</label><span>{Math.round(threshold * 100)}%</span></div><input id="threshold" type="range" min="0.01" max="0.3" step="0.01" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} /><div className="range-labels"><span>Strict</span><span>Sensitive</span></div><small>Used for video frame analysis when an optional video is uploaded.</small></div>
             <div className="setting-row"><div className="setting-heading"><label htmlFor="duration">Minimum blackout</label><span>{minDuration.toFixed(1)} s</span></div><input id="duration" type="range" min="0" max="5" step="0.1" value={minDuration} onChange={(event) => setMinDuration(Number(event.target.value))} /><div className="range-labels"><span>0 s</span><span>5 s</span></div><small>Shorter detections are reported as black frames when video is provided.</small></div>
             <label className="toggle-row"><span><strong>Near-black detection</strong><small>Include frames that are very dark, not just pure black.</small></span><input type="checkbox" checked={nearBlack} onChange={(event) => setNearBlack(event.target.checked)} /><i /></label>
@@ -301,7 +293,7 @@ function App() {
             {status === "completed" && <div className="success-note"><Check size={15} />Analysis finished successfully.</div>}
           </section>
 
-          {result && <section className="panel summary-panel"><div className="section-title compact"><div><span className="section-index">REPORT</span><div><h2>Quality summary</h2><p>Automated analysis overview.</p></div></div></div>
+          {result && <section className="panel summary-panel"><div className="section-title compact"><div><div><h2>Summary</h2><p>Analysis overview.</p></div></div></div>
             <div className="summary-total"><span>Total findings</span><strong>{issues.length}</strong><small>Video duration · {formatTime(duration)}</small></div>
             <div className="summary-list"><div><span><i className="dot dot-red" />Blackouts</span><b>{stats.blackouts}</b></div><div><span><i className="dot dot-orange" />Black frames</span><b>{stats.frames}</b></div><div><span><i className="dot dot-blue" />Timeline gaps</span><b>{stats.gaps}</b></div><div><span><i className="dot dot-purple" />Missing / discontinuous</span><b>{stats.missing}</b></div></div>
             <div className="summary-durations"><div><small>Black interval duration</small><strong>{stats.blackDuration.toFixed(3)} s</strong></div><div><small>Timeline gap duration</small><strong>{stats.gapDuration.toFixed(3)} s</strong></div></div>
