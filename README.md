@@ -1,6 +1,6 @@
-# Video QC Analyzer
+# Frameschacker
 
-A local-first video quality-control dashboard with a React/Vite/Tailwind frontend and a FastAPI backend. It analyzes decoded video frames using FFmpeg's `blackdetect` filter, reads video metadata with FFprobe, inspects supported XML segment timestamps, and exports normalized results to JSON or CSV.
+A local-first video quality-control dashboard with a React/Vite/Tailwind frontend and a FastAPI backend. It analyzes decoded video frames using FFmpeg's `blackdetect` and `deshake` filters, reads video metadata with FFprobe, inspects supported XML segment timestamps, and exports normalized results to JSON or CSV.
 
 ## Requirements
 
@@ -61,19 +61,19 @@ Copy `.env.example` to `backend/.env` to configure the backend:
 | `MAX_ANALYSIS_SECONDS` | `7200` | FFmpeg processing timeout |
 | `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated frontend origins |
 
-The upload endpoint requires an XML timeline (maximum 50 MB); a video is optional and accepts MP4, MOV, MXF, MKV, AVI, WebM, and MPEG. Without a video, the service runs XML timeline analysis only and does not require FFmpeg/FFprobe for that job. With a video, it also checks video metadata and decoded frames. Jobs are held in process memory and temporary server-side copies are deleted after completion, failure, or cancellation. Run only on a trusted machine/network; authentication and persistent job storage are not configured.
+The upload endpoint requires an XML timeline (maximum 50 MB); a video is optional and accepts MP4, MOV, MXF, MKV, AVI, WebM, and MPEG. Without a video, the service runs XML timeline analysis only and does not require FFmpeg/FFprobe for that job. With a video, it checks metadata, black frames, and (when enabled in Detection settings) camera movement associated with visible motion blur, as well as sustained frame-to-frame shake. Camera-motion findings require the configured minimum duration (0.5 seconds by default; adjustable from 0.1 to 2 seconds). Motion blur is estimated from FFmpeg blur scores alongside global frame movement, so fast subject movement, intentional camera movement, low-texture scenes, or rolling-shutter distortion may affect results. Jobs are held in process memory and temporary server-side copies are deleted after completion, failure, or cancellation. Run only on a trusted machine/network; authentication and persistent job storage are not configured.
 
 ## Architecture and API
 
 - `src/App.jsx`: responsive dashboard, upload controls, video preview, timeline, issue table, settings, and report downloads.
 - `backend/main.py`: upload validation, asynchronous job lifecycle, status polling, cancellation, cleanup, and API.
-- `backend/analysis.py`: FFprobe metadata, FFmpeg black-frame detection, XML parsing, timeline checks, and issue aggregation.
+- `backend/analysis.py`: FFprobe metadata, FFmpeg black-frame, camera-motion/blur, and camera-shake detection, XML parsing, timeline checks, and issue aggregation.
 - `backend/tests/`: unit tests for timestamp parsing, XML segment analysis, and aggregation.
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/health` | Service health |
-| `POST` | `/api/analyze` | Start an analysis; required multipart field: `xml`; optional fields: `video`, `pixel_threshold`, `min_blackout_duration`, `near_black_enabled`; returns `{ "jobId": "..." }` |
+| `POST` | `/api/analyze` | Start an analysis; required multipart field: `xml`; optional fields: `video`, `pixel_threshold`, `min_blackout_duration`, `near_black_enabled`, `camera_shake_enabled`, `min_camera_shake_duration`; returns `{ "jobId": "..." }` |
 | `GET` | `/api/jobs/{jobId}` | Read job status and final result |
 | `DELETE` | `/api/jobs/{jobId}` | Cancel a queued or running job |
 

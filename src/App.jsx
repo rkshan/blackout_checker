@@ -64,6 +64,8 @@ function App() {
   const [threshold, setThreshold] = useState(0.1);
   const [minDuration, setMinDuration] = useState(0.5);
   const [nearBlack, setNearBlack] = useState(true);
+  const [cameraShakeEnabled, setCameraShakeEnabled] = useState(true);
+  const [minShakeDuration, setMinShakeDuration] = useState(0.5);
   const [jobId, setJobId] = useState(null);
   const [job, setJob] = useState(null);
   const [error, setError] = useState("");
@@ -94,6 +96,7 @@ function App() {
     ?? Math.max(0, ...(result?.xml?.segments || []).map((segment) => segment.endTime));
   const stats = useMemo(() => ({
     blackouts: result?.summary?.blackoutCount ?? issues.filter((item) => item.type === "BLACKOUT").length,
+    shakes: result?.summary?.cameraShakeCount ?? issues.filter((item) => item.type === "CAMERA_SHAKE").length,
     frames: result?.summary?.blackFrameCount ?? issues.filter((item) => item.type === "BLACK_FRAME").length,
     gaps: result?.summary?.timelineGapCount ?? issues.filter((item) => ["EMPTY_TIMELINE_GAP", "TIMELINE_DISCONTINUITY"].includes(item.type)).length,
     missing: result?.summary?.missingOrDiscontinuousCount ?? issues.filter((item) => item.type === "MISSING_SEGMENT").length,
@@ -142,6 +145,8 @@ function App() {
     form.append("pixel_threshold", String(threshold));
     form.append("min_blackout_duration", String(minDuration));
     form.append("near_black_enabled", String(nearBlack));
+    form.append("camera_shake_enabled", String(cameraShakeEnabled));
+    form.append("min_camera_shake_duration", String(minShakeDuration));
     try {
       const response = await fetch(`${API}/api/analyze`, { method: "POST", body: form });
       const body = await response.json();
@@ -187,7 +192,7 @@ function App() {
       const columns = ["id", "type", "startTime", "endTime", "duration", "severity", "source", "description"];
       const escape = (value) => `"${String(Array.isArray(value) ? value.join("; ") : value ?? "").replaceAll('"', '""')}"`;
       const reportRows = [
-        ["Video QC Analyzer report"],
+        ["Frameschacker report"],
         ["Video file", result.video?.filename || "Not supplied"],
         ["XML file", result.xml?.filename || "Not supplied"],
         ["Analysis date", result.analysisDate],
@@ -200,6 +205,7 @@ function App() {
         ["Near-black detection", result.settings.nearBlackEnabled],
         ["Total findings", result.summary.totalIssues],
         ["Blackouts", result.summary.blackoutCount],
+        ["Camera shakes", result.summary.cameraShakeCount],
         ["Black frames", result.summary.blackFrameCount],
         ["Timeline gaps", result.summary.timelineGapCount],
         ["Missing/discontinuous segments", result.summary.missingOrDiscontinuousCount],
@@ -225,7 +231,7 @@ function App() {
   return (
     <main className="app-shell min-h-screen">
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Framecheck home"><span className="brand-mark"><ScanLine size={18} /></span><span>framecheck</span></a>
+        <a className="brand" href="#" aria-label="Frameschacker home"><span className="brand-mark"><ScanLine size={18} /></span><span>frameschacker</span></a>
         <div className="topbar-right"><ShieldCheck size={14} /><span>Private media analysis</span></div>
       </header>
 
@@ -241,7 +247,7 @@ function App() {
           <section className="panel">
             <div className="section-title"><div><div><h2>Files</h2><p>Choose a timeline. Add a video for frame-level checks.</p></div></div></div>
             <div className="upload-grid">
-              <FileCard label="Video file" file={video} accept="video/*,.mxf" icon={FileVideo2} hint="Optional · Adds black-frame detection" onChange={setVideo} onRemove={() => setVideo(null)} />
+              <FileCard label="Video file" file={video} accept="video/*,.mxf" icon={FileVideo2} hint="Optional · Detects black frames and camera movement blur" onChange={setVideo} onRemove={() => setVideo(null)} />
               <FileCard label="XML timeline" file={xml} accept=".xml,text/xml,application/xml" icon={FileCode2} hint="Required · Segment and edit metadata" required onChange={setXml} onRemove={() => setXml(null)} />
             </div>
           </section>
@@ -259,7 +265,7 @@ function App() {
                 })}
               </div>
               <div className="timeline-ticks"><span>00:00</span><span>{formatTime(duration / 4)}</span><span>{formatTime(duration / 2)}</span><span>{formatTime(duration * 0.75)}</span><span>{formatTime(duration)}</span></div>
-              <div className="timeline-legend"><span><i className="legend-blackout" />Blackout / black frame</span><span><i className="legend-gap" />XML gap / discontinuity</span><span><i className="legend-other" />Other XML finding</span></div>
+              <div className="timeline-legend"><span><i className="legend-blackout" />Blackout / black frame</span><span><i className="legend-shake" />Camera movement / blur</span><span><i className="legend-gap" />XML gap / discontinuity</span><span><i className="legend-other" />Other XML finding</span></div>
             </div>}
           </section>}
 
@@ -269,7 +275,7 @@ function App() {
             {result ? <>
               <div className="table-toolbar"><div className="search-box"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search findings..." /></div><label className="filter-select"><SlidersHorizontal size={14} /><select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="ALL">All issue types</option>{[...new Set(issues.map((item) => item.type))].map((type) => <option key={type}>{type}</option>)}</select></label><label className="filter-select"><select aria-label="Filter by severity" value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)}><option value="ALL">All severity</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label><label className="filter-select"><span>Sort</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="startTime">Start time</option><option value="duration">Duration</option><option value="severity">Severity</option></select></label><label className="time-filter"><span>From s</span><input type="number" min="0" value={timeStart} onChange={(event) => setTimeStart(event.target.value)} aria-label="Filter from start time in seconds" /></label><label className="time-filter"><span>To s</span><input type="number" min="0" value={timeEnd} onChange={(event) => setTimeEnd(event.target.value)} aria-label="Filter to start time in seconds" /></label></div>
               <div className="table-wrap"><table><thead><tr><th>Issue type</th><th>Start time</th><th>End time</th><th>Duration</th><th>Severity</th><th>Source</th><th /></tr></thead><tbody>
-                {filteredIssues.map((item) => <tr key={item.id}><td><span className={`issue-label ${item.type.toLowerCase()}`}><i />{item.type.replaceAll("_", " ")}</span></td><td className="mono">{formatTime(item.startTime)}</td><td className="mono">{formatTime(item.endTime)}</td><td className="mono">{item.duration.toFixed(3)} s</td><td><span className={`severity severity-${item.severity.toLowerCase()}`}>{item.severity}</span></td><td><span className="source-tag">{item.source.join(" + ")}</span></td><td><button className="view-button" onClick={() => seek(item.startTime)}><Play size={12} fill="currentColor" /> View</button></td></tr>)}
+                {filteredIssues.map((item) => <tr key={item.id}><td><span className={`issue-label ${item.type.toLowerCase()}`}><i />{item.type === "CAMERA_SHAKE" ? "Camera movement / blur" : item.type.replaceAll("_", " ")}</span></td><td className="mono">{formatTime(item.startTime)}</td><td className="mono">{formatTime(item.endTime)}</td><td className="mono">{item.duration.toFixed(3)} s</td><td><span className={`severity severity-${item.severity.toLowerCase()}`}>{item.severity}</span></td><td><span className="source-tag">{item.source.join(" + ")}</span></td><td><button className="view-button" onClick={() => seek(item.startTime)}><Play size={12} fill="currentColor" /> View</button></td></tr>)}
                 {!filteredIssues.length && <tr><td colSpan="7" className="empty-row">{issues.length ? "No findings match your search." : "No issues detected. Your video passed the configured checks."}</td></tr>}
               </tbody></table></div>
               <div className="table-footer">Showing {filteredIssues.length} of {issues.length} findings <span>Times shown as HH:MM:SS.mmm</span></div>
@@ -279,10 +285,12 @@ function App() {
 
         <aside className="side-column">
           <section className="panel settings-panel">
-            <div className="section-title compact"><div><div><h2>Detection settings</h2><p>Adjust black frame sensitivity.</p></div></div></div>
+            <div className="section-title compact"><div><div><h2>Detection settings</h2><p>Choose which video checks to run.</p></div></div></div>
             <div className="setting-row"><div className="setting-heading"><label htmlFor="threshold">Black pixel threshold</label><span>{Math.round(threshold * 100)}%</span></div><input id="threshold" type="range" min="0.01" max="0.3" step="0.01" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} /><div className="range-labels"><span>Strict</span><span>Sensitive</span></div><small>Used for video frame analysis when an optional video is uploaded.</small></div>
             <div className="setting-row"><div className="setting-heading"><label htmlFor="duration">Minimum blackout</label><span>{minDuration.toFixed(1)} s</span></div><input id="duration" type="range" min="0" max="5" step="0.1" value={minDuration} onChange={(event) => setMinDuration(Number(event.target.value))} /><div className="range-labels"><span>0 s</span><span>5 s</span></div><small>Shorter detections are reported as black frames when video is provided.</small></div>
             <label className="toggle-row"><span><strong>Near-black detection</strong><small>Include frames that are very dark, not just pure black.</small></span><input type="checkbox" checked={nearBlack} onChange={(event) => setNearBlack(event.target.checked)} /><i /></label>
+            <label className="toggle-row"><span><strong>Camera movement / blur</strong><small>Detect camera movement that creates visible motion blur, as well as sustained shake.</small></span><input type="checkbox" checked={cameraShakeEnabled} onChange={(event) => setCameraShakeEnabled(event.target.checked)} /><i /></label>
+            <div className="setting-row shake-duration-setting"><div className="setting-heading"><label htmlFor="shake-duration">Minimum duration</label><span>{minShakeDuration.toFixed(1)} s</span></div><input id="shake-duration" type="range" min="0.1" max="2" step="0.1" value={minShakeDuration} disabled={!cameraShakeEnabled} onChange={(event) => setMinShakeDuration(Number(event.target.value))} /><div className="range-labels"><span>0.1 s · more sensitive</span><span>2 s · less sensitive</span></div><small>Movement and blur must last at least this long to be reported.</small></div>
             <div className="settings-note"><AlertCircle size={15} /><span>Dark scenes may be flagged. Review detections in the video preview before classifying as a blackout.</span></div>
             <div className="action-buttons">
               {busy ? <button className="primary-button cancel-button" onClick={cancelAnalysis}><X size={16} /> Cancel analysis</button> :               <button className="primary-button" onClick={startAnalysis} disabled={!xml}><ScanLine size={16} /> Start analysis</button>}
@@ -295,14 +303,14 @@ function App() {
 
           {result && <section className="panel summary-panel"><div className="section-title compact"><div><div><h2>Summary</h2><p>Analysis overview.</p></div></div></div>
             <div className="summary-total"><span>Total findings</span><strong>{issues.length}</strong><small>Video duration · {formatTime(duration)}</small></div>
-            <div className="summary-list"><div><span><i className="dot dot-red" />Blackouts</span><b>{stats.blackouts}</b></div><div><span><i className="dot dot-orange" />Black frames</span><b>{stats.frames}</b></div><div><span><i className="dot dot-blue" />Timeline gaps</span><b>{stats.gaps}</b></div><div><span><i className="dot dot-purple" />Missing / discontinuous</span><b>{stats.missing}</b></div></div>
+            <div className="summary-list"><div><span><i className="dot dot-red" />Blackouts</span><b>{stats.blackouts}</b></div><div><span><i className="dot dot-orange" />Black frames</span><b>{stats.frames}</b></div><div><span><i className="dot dot-shake" />Camera movement / blur</span><b>{stats.shakes}</b></div><div><span><i className="dot dot-blue" />Timeline gaps</span><b>{stats.gaps}</b></div><div><span><i className="dot dot-purple" />Missing / discontinuous</span><b>{stats.missing}</b></div></div>
             <div className="summary-durations"><div><small>Black interval duration</small><strong>{stats.blackDuration.toFixed(3)} s</strong></div><div><small>Timeline gap duration</small><strong>{stats.gapDuration.toFixed(3)} s</strong></div></div>
             <div className="report-date"><Clock3 size={13} /> Analyzed {new Date(result.analysisDate).toLocaleString()}</div>
           </section>}
           <div className="privacy-note"><ShieldCheck size={16} /><span><strong>Private by design</strong>Your media is analyzed locally and temporary server copies are removed when processing finishes.</span></div>
         </aside>
       </div>
-      <footer><span>FRAMECHECK · VIDEO QC ANALYZER</span><span>FFmpeg frame analysis · XML timeline inspection</span></footer>
+      <footer><span>FRAMESCHACKER</span><span>FFmpeg frame analysis · XML timeline inspection</span></footer>
     </main>
   );
 }

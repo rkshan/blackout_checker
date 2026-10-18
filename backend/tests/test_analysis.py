@@ -1,4 +1,14 @@
-from analysis import aggregate_issues, analyze_xml, parse_blackdetect_log, parse_time
+from pathlib import Path
+
+from analysis import (
+    aggregate_issues,
+    analyze_xml,
+    blackdetect_command,
+    parse_blackdetect_log,
+    parse_deshake_log,
+    parse_motion_blur_log,
+    parse_time,
+)
 
 
 def test_parse_time_supports_seconds_clock_and_units():
@@ -70,3 +80,89 @@ def test_blackdetect_log_separates_blackouts_from_short_black_frames():
     issues = parse_blackdetect_log(log, 0.1, 0.5, True)
     assert [issue["type"] for issue in issues] == ["BLACKOUT", "BLACK_FRAME"]
     assert round(issues[1]["duration"], 2) == 0.08
+
+
+def test_deshake_log_reports_sustained_camera_shake():
+    rows = ["Ori x, Avg x, Fin x, Ori y, Avg y, Fin y, Ori angle, Avg angle, Fin angle, Ori zoom, Avg zoom, Fin zoom"]
+    rows.extend(
+        f"{8 if index % 2 else -8}, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
+        for index in range(40)
+    )
+    issues = parse_deshake_log("\n".join(rows), 1920, 1080, "25/1")
+    assert len(issues) == 1
+    assert issues[0]["type"] == "CAMERA_SHAKE"
+    assert issues[0]["duration"] >= 0.5
+    assert issues[0]["source"] == ["VIDEO"]
+
+
+def test_deshake_log_ignores_smooth_camera_pan():
+    rows = ["Ori x, Avg x, Fin x, Ori y, Avg y, Fin y, Ori angle, Avg angle, Fin angle, Ori zoom, Avg zoom, Fin zoom"]
+    rows.extend("2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0" for _ in range(60))
+    assert parse_deshake_log("\n".join(rows), 1920, 1080, "25/1") == []
+
+
+def test_deshake_log_ignores_shakes_shorter_than_minimum_duration():
+    rows = ["Ori x, Avg x, Fin x, Ori y, Avg y, Fin y, Ori angle, Avg angle, Fin angle, Ori zoom, Avg zoom, Fin zoom"]
+    rows.extend(
+        f"{8 if index % 2 else -8}, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
+        for index in range(8)
+    )
+    assert parse_deshake_log("\n".join(rows), 1920, 1080, "25/1") == []
+
+
+def test_deshake_log_uses_configured_minimum_duration():
+    rows = ["Ori x, Avg x, Fin x, Ori y, Avg y, Fin y, Ori angle, Avg angle, Fin angle, Ori zoom, Avg zoom, Fin zoom"]
+    rows.extend(
+        f"{8 if index % 2 else -8}, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
+        for index in range(10)
+    )
+    motion_log = "\n".join(rows)
+    assert parse_deshake_log(motion_log, 1920, 1080, "25/1", 0.5) == []
+    assert len(parse_deshake_log(motion_log, 1920, 1080, "25/1", 0.1)) == 1
+
+
+def test_motion_blur_requires_camera_movement_and_blur():
+    motion_rows = ["Ori x, Avg x, Fin x, Ori y, Avg y, Fin y, Ori angle, Avg angle, Fin angle, Ori zoom, Avg zoom, Fin zoom"]
+    blur_rows = []
+    for index in range(20):
+        motion_rows.append("8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")
+        blur_rows.extend((f"frame:{index} pts:{index} pts_time:{index / 25}", "lavfi.blur=5.73"))
+    issues = parse_motion_blur_log(
+        "\n".join(motion_rows),
+        "\n".join(blur_rows),
+        1920,
+        1080,
+        "25/1",
+    )
+    assert len(issues) == 1
+    assert issues[0]["type"] == "CAMERA_SHAKE"
+    assert issues[0]["description"] == "Camera movement with visible motion blur detected."
+
+
+def test_motion_blur_ignores_sharp_camera_movement():
+    motion_rows = ["Ori x, Avg x, Fin x, Ori y, Avg y, Fin y, Ori angle, Avg angle, Fin angle, Ori zoom, Avg zoom, Fin zoom"]
+    blur_rows = []
+    for index in range(20):
+        motion_rows.append("8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0")
+        blur_rows.extend((f"frame:{index} pts:{index} pts_time:{index / 25}", "lavfi.blur=4.6"))
+    assert parse_motion_blur_log(
+        "\n".join(motion_rows),
+        "\n".join(blur_rows),
+        1920,
+        1080,
+        "25/1",
+    ) == []
+
+
+def test_deshake_log_rejects_unexpected_format():
+    try:
+        parse_deshake_log("not a deshake log", 1920, 1080, "25/1")
+    except ValueError as exc:
+        assert "unexpected camera-motion log format" in str(exc)
+    else:
+        raise AssertionError("Unexpected motion-log format should fail.")
+
+
+def test_blackdetect_command_can_skip_camera_motion_analysis():
+    command = blackdetect_command(Path("video.mp4"), 0.1)
+    assert command[command.index("-vf") + 1] == "blackdetect=d=0:pix_th=0.1000"

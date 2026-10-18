@@ -23,6 +23,8 @@ from analysis import (
     analyze_xml,
     blackdetect_command,
     parse_blackdetect_log,
+    parse_deshake_log,
+    parse_motion_blur_log,
     probe_video,
 )
 
@@ -32,7 +34,7 @@ MAX_ANALYSIS_SECONDS = int(os.getenv("MAX_ANALYSIS_SECONDS", "7200"))
 TEMP_ROOT = Path(tempfile.gettempdir()) / "video-qc-analyzer"
 TEMP_ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
 
-app = FastAPI(title="Video QC Analyzer API", version="1.0.0")
+app = FastAPI(title="Frameschacker API", version="1.0.0")
 origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
@@ -47,6 +49,7 @@ workers: dict[str, asyncio.Task[None]] = {}
 
 def _build_summary(issues: list[dict[str, Any]], duration: float | None) -> dict[str, Any]:
     black_types = {"BLACKOUT", "BLACK_FRAME"}
+    shake_count = sum(issue["type"] == "CAMERA_SHAKE" for issue in issues)
     gap_types = {"EMPTY_TIMELINE_GAP", "TIMELINE_DISCONTINUITY"}
     discontinuity_types = {"TIMELINE_DISCONTINUITY", "MISSING_SEGMENT"}
 
@@ -58,6 +61,7 @@ def _build_summary(issues: list[dict[str, Any]], duration: float | None) -> dict
         "totalIssues": len(issues),
         "blackoutCount": sum(issue["type"] == "BLACKOUT" or "BLACKOUT" in issue.get("corroboratingTypes", []) for issue in issues),
         "blackFrameCount": sum(issue["type"] == "BLACK_FRAME" or "BLACK_FRAME" in issue.get("corroboratingTypes", []) for issue in issues),
+        "cameraShakeCount": shake_count,
         "timelineGapCount": sum(includes(issue, gap_types) for issue in issues),
         "missingOrDiscontinuousCount": sum(includes(issue, discontinuity_types) for issue in issues),
         "confirmedBlackIntervalDuration": sum(issue["duration"] for issue in issues if includes(issue, black_types)),
@@ -65,11 +69,16 @@ def _build_summary(issues: list[dict[str, Any]], duration: float | None) -> dict
     }
 
 
-async def _detect_black_intervals(video_path: Path, settings: dict[str, Any]) -> list[dict[str, Any]]:
+async def _detect_video_issues(
+    video_path: Path,
+    settings: dict[str, Any],
+    metadata: dict[str, Any],
+    motion_log_path: Path | None,
+) -> list[dict[str, Any]]:
     threshold = settings["pixelThreshold"] if settings["nearBlackEnabled"] else min(settings["pixelThreshold"], 0.01)
     try:
         process = await asyncio.create_subprocess_exec(
-            *blackdetect_command(video_path, threshold),
+            *blackdetect_command(video_path, threshold, motion_log_path),
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -98,10 +107,30 @@ async def _detect_black_intervals(video_path: Path, settings: dict[str, Any]) ->
         settings["minBlackoutDuration"],
         settings["nearBlackEnabled"],
     )
-    if process.returncode and not intervals:
+    if process.returncode:
         detail = log.strip()[-1200:]
         raise AnalysisError(f"FFmpeg failed to analyze the video: {detail or 'decoder error'}")
-    return intervals
+    if not settings["cameraShakeEnabled"]:
+        return intervals
+    if motion_log_path is None or not motion_log_path.is_file():
+        raise AnalysisError("FFmpeg did not produce camera-motion data for this video.")
+    motion_log = await asyncio.to_thread(motion_log_path.read_text, encoding="utf-8")
+    shakes = parse_deshake_log(
+        motion_log,
+        metadata["width"],
+        metadata["height"],
+        metadata["frameRate"],
+        settings["minCameraShakeDuration"],
+    )
+    motion_blur = parse_motion_blur_log(
+        motion_log,
+        log,
+        metadata["width"],
+        metadata["height"],
+        metadata["frameRate"],
+        settings["minCameraShakeDuration"],
+    )
+    return intervals + shakes + motion_blur
 
 
 async def _save_upload(upload: UploadFile, destination: Path, limit: int) -> int:
@@ -129,8 +158,13 @@ async def _run_analysis(job_id: str, video_path: Path | None, xml_path: Path, jo
         if video_path:
             job["stage"] = "Reading video metadata"
             metadata = await asyncio.to_thread(probe_video, video_path)
-            job["stage"] = "Scanning video frames"
-            video_issues = await _detect_black_intervals(video_path, settings)
+            job["stage"] = "Scanning frames for blackouts and camera shake"
+            video_issues = await _detect_video_issues(
+                video_path,
+                settings,
+                metadata,
+                job_dir / "camera-motion.log" if settings["cameraShakeEnabled"] else None,
+            )
 
         job["stage"] = "Analyzing XML timeline"
         xml_bytes = await asyncio.to_thread(xml_path.read_bytes)
@@ -192,6 +226,8 @@ async def create_analysis(
     pixel_threshold: float = Form(default=0.10),
     min_blackout_duration: float = Form(default=0.5),
     near_black_enabled: bool = Form(default=True),
+    camera_shake_enabled: bool = Form(default=True),
+    min_camera_shake_duration: float = Form(default=0.5),
 ) -> dict[str, str]:
     xml_name = Path(xml.filename or "").name
     if Path(xml_name).suffix.lower() != ".xml":
@@ -203,6 +239,8 @@ async def create_analysis(
         raise HTTPException(status_code=422, detail="Pixel threshold must be between 0.001 and 0.5.")
     if not 0 <= min_blackout_duration <= 60:
         raise HTTPException(status_code=422, detail="Minimum blackout duration must be between 0 and 60 seconds.")
+    if not 0.1 <= min_camera_shake_duration <= 2:
+        raise HTTPException(status_code=422, detail="Minimum camera-shake duration must be between 0.1 and 2 seconds.")
     job_id = str(uuid.uuid4())
     job_dir = TEMP_ROOT / job_id
     job_dir.mkdir(mode=0o700)
@@ -224,6 +262,8 @@ async def create_analysis(
         "pixelThreshold": pixel_threshold,
         "minBlackoutDuration": min_blackout_duration,
         "nearBlackEnabled": near_black_enabled,
+        "cameraShakeEnabled": camera_shake_enabled,
+        "minCameraShakeDuration": min_camera_shake_duration,
     }
     jobs[job_id] = {
         "id": job_id,
