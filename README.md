@@ -51,6 +51,22 @@ npm run dev
 
 Open the Vite URL (normally http://localhost:5173). Configure backend URL with `VITE_API_URL` only when the API is not at `http://localhost:8000`.
 
+## Publish to the web (Vercel + Render)
+
+The Vite frontend can be deployed as a static Vercel site. The API needs a long-running Render web service with FFmpeg; the repository-root `Dockerfile` installs FFmpeg and starts FastAPI.
+
+> **Before making the API public:** the backend currently has no authentication or rate limiting. CORS only controls which browser pages can read responses; it does not prevent direct API requests. Add access protection before sharing the site publicly, or restrict access to trusted users.
+
+1. Push the project to GitHub. In VS Code, review the files in **Source Control**, commit the intended changes, then push the branch you want to deploy.
+2. In Render, choose **New → Web Service** and connect the GitHub repository. Select **Docker** as the runtime, leave **Root Directory** blank, and set **Dockerfile Path** to `./Dockerfile`.
+3. Create the Render service. After the first deploy, open its URL plus `/api/health`; the response should be `{"status":"ok"}`.
+4. In Vercel, choose **Add New → Project**, import the same repository, and keep the project root as `./`. Vercel should detect Vite; use `npm run build` as the build command and `dist` as the output directory.
+5. In Vercel project settings, add `VITE_API_URL` with the Render service base URL, for example `https://your-api.onrender.com` (no trailing `/api`). Apply it to Production and deploy.
+6. Copy the Vercel site's exact URL. In Render, open the API service's **Environment** settings and set `CORS_ORIGINS` to that URL, such as `https://your-site.vercel.app`. If you use more than one frontend domain, separate origins with commas. Save and redeploy.
+7. Open the Vercel site, upload a small test video and XML timeline, and confirm an analysis completes. If the browser reports a CORS error, check that `CORS_ORIGINS` exactly matches the site origin, including `https://` and the hostname.
+
+`VITE_API_URL` is embedded into the frontend at build time, so redeploy Vercel after changing it. Keep the Render service running while using the site; the API stores active jobs in memory and temporary upload files only for processing.
+
 ## Configuration
 
 Copy `.env.example` to `backend/.env` to configure the backend:
