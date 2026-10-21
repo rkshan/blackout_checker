@@ -29,7 +29,7 @@ from analysis import (
 )
 
 load_dotenv(Path(__file__).parent / ".env")
-MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "2048")) * 1024 * 1024
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "3072")) * 1024 * 1024
 MAX_ANALYSIS_SECONDS = int(os.getenv("MAX_ANALYSIS_SECONDS", "7200"))
 TEMP_ROOT = Path(tempfile.gettempdir()) / "video-qc-analyzer"
 TEMP_ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -226,7 +226,7 @@ async def create_analysis(
     pixel_threshold: float = Form(default=0.10),
     min_blackout_duration: float = Form(default=0.5),
     near_black_enabled: bool = Form(default=True),
-    camera_shake_enabled: bool = Form(default=True),
+    camera_shake_enabled: bool = Form(default=False),
     min_camera_shake_duration: float = Form(default=0.5),
 ) -> dict[str, str]:
     xml_name = Path(xml.filename or "").name

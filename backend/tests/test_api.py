@@ -37,7 +37,7 @@ def test_xml_is_required_and_video_is_optional():
         assert job["result"]["video"] is None
         assert job["result"]["xml"]["supported"] is True
         assert job["result"]["summary"]["totalVideoDuration"] is None
-        assert job["result"]["settings"]["cameraShakeEnabled"] is True
+        assert job["result"]["settings"]["cameraShakeEnabled"] is False
         assert job["result"]["settings"]["minCameraShakeDuration"] == 0.5
 
 

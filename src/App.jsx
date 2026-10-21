@@ -64,7 +64,7 @@ function App() {
   const [threshold, setThreshold] = useState(0.1);
   const [minDuration, setMinDuration] = useState(0.5);
   const [nearBlack, setNearBlack] = useState(true);
-  const [cameraShakeEnabled, setCameraShakeEnabled] = useState(true);
+  const [cameraShakeEnabled, setCameraShakeEnabled] = useState(false);
   const [minShakeDuration, setMinShakeDuration] = useState(0.5);
   const [jobId, setJobId] = useState(null);
   const [job, setJob] = useState(null);
@@ -289,7 +289,7 @@ function App() {
             <div className="setting-row"><div className="setting-heading"><label htmlFor="threshold">Black pixel threshold</label><span>{Math.round(threshold * 100)}%</span></div><input id="threshold" type="range" min="0.01" max="0.3" step="0.01" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} /><div className="range-labels"><span>Strict</span><span>Sensitive</span></div><small>Used for video frame analysis when an optional video is uploaded.</small></div>
             <div className="setting-row"><div className="setting-heading"><label htmlFor="duration">Minimum blackout</label><span>{minDuration.toFixed(1)} s</span></div><input id="duration" type="range" min="0" max="5" step="0.1" value={minDuration} onChange={(event) => setMinDuration(Number(event.target.value))} /><div className="range-labels"><span>0 s</span><span>5 s</span></div><small>Shorter detections are reported as black frames when video is provided.</small></div>
             <label className="toggle-row"><span><strong>Near-black detection</strong><small>Include frames that are very dark, not just pure black.</small></span><input type="checkbox" checked={nearBlack} onChange={(event) => setNearBlack(event.target.checked)} /><i /></label>
-            <label className="toggle-row"><span><strong>Camera movement / blur</strong><small>Detect camera movement that creates visible motion blur, as well as sustained shake.</small></span><input type="checkbox" checked={cameraShakeEnabled} onChange={(event) => setCameraShakeEnabled(event.target.checked)} /><i /></label>
+            <label className="toggle-row"><span><strong>Camera movement / blur</strong><small>Slower full-frame scan for movement and visible blur. Off by default for faster analysis.</small></span><input type="checkbox" checked={cameraShakeEnabled} onChange={(event) => setCameraShakeEnabled(event.target.checked)} /><i /></label>
             <div className="setting-row shake-duration-setting"><div className="setting-heading"><label htmlFor="shake-duration">Minimum duration</label><span>{minShakeDuration.toFixed(1)} s</span></div><input id="shake-duration" type="range" min="0.1" max="2" step="0.1" value={minShakeDuration} disabled={!cameraShakeEnabled} onChange={(event) => setMinShakeDuration(Number(event.target.value))} /><div className="range-labels"><span>0.1 s · more sensitive</span><span>2 s · less sensitive</span></div><small>Movement and blur must last at least this long to be reported.</small></div>
             <div className="settings-note"><AlertCircle size={15} /><span>Dark scenes may be flagged. Review detections in the video preview before classifying as a blackout.</span></div>
             <div className="action-buttons">

@@ -73,7 +73,7 @@ Copy `.env.example` to `backend/.env` to configure the backend:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `MAX_UPLOAD_MB` | `2048` | Per-file video upload limit |
+| `MAX_UPLOAD_MB` | `3072` | Per-file upload limit (3 GiB; configured in mebibytes) |
 | `MAX_ANALYSIS_SECONDS` | `7200` | FFmpeg processing timeout |
 | `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated frontend origins |
 
@@ -112,6 +112,8 @@ Completed result contains `video` metadata, optional `xml` summary, effective `s
 ## Detection and XML assumptions
 
 Black intervals come from FFmpeg's `blackdetect` filter over decoded video frames. The sensitivity control maps to FFmpeg `pix_th`; the minimum duration separates `BLACKOUT` from `BLACK_FRAME`. It is a technical detector, not a semantic assessment of whether a dark scene is intentional. Playback review remains important. Variable frame rates are handled by FFmpeg timestamps, but exact frame boundaries can vary by source/container and decoder.
+
+Camera movement/blur analysis is an optional, more expensive full-resolution FFmpeg pass and is disabled by default to keep scans faster. Enable it in the dashboard when those findings are needed; it can take longer than black-frame detection, especially for high-resolution or long videos.
 
 XML support is intentionally schema-adaptive, not universal. The parser recognizes common start/in, end/out, duration/length, and source/file attribute or child names. It compares timestamped segments for inferred gaps/overlaps and only reports `EMPTY_TIMELINE_GAP` or `MISSING_SEGMENT` where XML explicitly identifies them. It does not infer a gap from absent XML data. Unknown schemas are summarized with their element names and a warning rather than treated as a valid empty timeline. Adapt field mapping in `backend/analysis.py` when integrating a specific EDL or vendor schema; a representative XML sample is needed to support that schema accurately.
 
