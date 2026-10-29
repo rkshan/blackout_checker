@@ -31,10 +31,10 @@ from analysis import (
 load_dotenv(Path(__file__).parent / ".env")
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "3072")) * 1024 * 1024
 MAX_ANALYSIS_SECONDS = int(os.getenv("MAX_ANALYSIS_SECONDS", "7200"))
-TEMP_ROOT = Path(tempfile.gettempdir()) / "video-qc-analyzer"
+TEMP_ROOT = Path(tempfile.gettempdir()) / "framechecker"
 TEMP_ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
 
-app = FastAPI(title="Frameschacker API", version="1.0.0")
+app = FastAPI(title="FrameChecker API", version="1.0.0")
 origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,

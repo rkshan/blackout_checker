@@ -192,7 +192,7 @@ function App() {
       const columns = ["id", "type", "startTime", "endTime", "duration", "severity", "source", "description"];
       const escape = (value) => `"${String(Array.isArray(value) ? value.join("; ") : value ?? "").replaceAll('"', '""')}"`;
       const reportRows = [
-        ["Frameschacker report"],
+        ["FrameChecker report"],
         ["Video file", result.video?.filename || "Not supplied"],
         ["XML file", result.xml?.filename || "Not supplied"],
         ["Analysis date", result.analysisDate],
@@ -231,7 +231,7 @@ function App() {
   return (
     <main className="app-shell min-h-screen">
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Frameschacker home"><span className="brand-mark"><ScanLine size={18} /></span><span>frameschacker</span></a>
+        <a className="brand" href="#" aria-label="FrameChecker home"><span className="brand-mark"><ScanLine size={18} /></span><span>FrameChecker</span></a>
         <div className="topbar-right"><ShieldCheck size={14} /><span>Private media analysis</span></div>
       </header>
 
@@ -310,7 +310,7 @@ function App() {
           <div className="privacy-note"><ShieldCheck size={16} /><span><strong>Private by design</strong>Your media is analyzed locally and temporary server copies are removed when processing finishes.</span></div>
         </aside>
       </div>
-      <footer><span>FRAMESCHACKER</span><span>FFmpeg frame analysis · XML timeline inspection</span></footer>
+      <footer><span>FRAMECHECKER</span><span>FFmpeg frame analysis · XML timeline inspection</span></footer>
     </main>
   );
 }

@@ -1,4 +1,4 @@
-# Frameschacker
+# FrameChecker
 
 A local-first video quality-control dashboard with a React/Vite/Tailwind frontend and a FastAPI backend. It analyzes decoded video frames using FFmpeg's `blackdetect` and `deshake` filters, reads video metadata with FFprobe, inspects supported XML segment timestamps, and exports normalized results to JSON or CSV.
 
