@@ -185,7 +185,7 @@ tbody tr:hover { background: #fafbfa; }
 .error-alert { border-color: #f0d1ce; color: #a4443c; background: #fdf5f4; }
 .warning-alert { border-color: #eee0bd; color: #82632b; background: #fcf9f1; }
 .error-alert span { flex: 1; }
-.app-shell > footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; padding: 15px 0 20px; border-top: 1px solid var(--border); color: #87918b; font-size: 10px; }
+.app-shell > footer { display: flex; justify-content: center; gap: 12px; margin-top: 28px; padding: 15px 0 20px; border-top: 1px solid var(--border); color: #87918b; font-size: 10px; text-align: center; }
 @keyframes pulse { 50% { opacity: .4; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes progress { to { transform: translateX(185%); } }

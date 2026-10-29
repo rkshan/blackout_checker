@@ -310,7 +310,7 @@ function App() {
           <div className="privacy-note"><ShieldCheck size={16} /><span><strong>Private by design</strong>Your media is analyzed locally and temporary server copies are removed when processing finishes.</span></div>
         </aside>
       </div>
-      <footer><span>FRAMECHECKER</span><span>FFmpeg frame analysis · XML timeline inspection</span></footer>
+      <footer><span>Developed By Rukshan S. 2026</span></footer>
     </main>
   );
 }
