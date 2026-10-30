@@ -110,13 +110,31 @@ function App() {
     const poll = async () => {
       try {
         const response = await fetch(`${API}/api/jobs/${jobId}`);
-        if (!response.ok) throw new Error("Could not get analysis status.");
+        if (response.status === 404) {
+          const message = "The backend no longer has this analysis job. It may have restarted during processing; upload the files and run the analysis again.";
+          clearInterval(pollRef.current);
+          setJob({ status: "failed", stage: "Could not load results", error: message });
+          setError(message);
+          return;
+        }
+        if (!response.ok) {
+          const message = `Could not load analysis status (HTTP ${response.status}).`;
+          if (response.status < 500 && response.status !== 429) {
+            clearInterval(pollRef.current);
+            setJob({ status: "failed", stage: "Could not load results", error: message });
+            setError(message);
+            return;
+          }
+          throw new Error(message);
+        }
         const nextJob = await response.json();
         setJob(nextJob);
+        setError("");
         if (!["queued", "processing"].includes(nextJob.status)) clearInterval(pollRef.current);
       } catch (pollError) {
-        setError(pollError.message);
-        clearInterval(pollRef.current);
+        setError(pollError instanceof Error && pollError.message.startsWith("Could not load analysis status")
+          ? `${pollError.message} Retrying automatically.`
+          : "Connection to the analysis service was interrupted. Retrying automatically.");
       }
     };
     poll();
